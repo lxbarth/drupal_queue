@@ -58,6 +58,17 @@ function drupal_queue_schema() {
       'consumer_expire' => array('consumer_id', 'expire'),
     ),
   );
+  $schema['queue_consumer_id'] = array(
+    'description' => 'Stores queue consumer IDs, used to auto-increment the consumer ID so that a unique consumer ID is used.',
+    'fields' => array(
+      'consumer_id'  => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique consumer ID used to make sure only one consumer gets one item.',
+      ),
+    ),
+    'primary key' => array('consumer_id'),
+  );
   return $schema;
 }
 
