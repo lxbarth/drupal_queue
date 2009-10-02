@@ -219,7 +219,7 @@ class SystemQueue implements DrupalQueueInterface {
         // reset items before the lease should really expire.
         db_query('UPDATE {queue} SET consumer_id = %d, expire = %d WHERE item_id = %d AND consumer_id = 0', $this->consumerId, time() + $lease_time, $item->item_id);
         // If there are affected rows, this update succeeded.
-        if (db_affected_rows()) { // @todo: this may not be thread safe.
+        if (db_affected_rows()) {
           $item->data = unserialize($item->data);
           return $item;
         }
