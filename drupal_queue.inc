@@ -5,7 +5,11 @@
  * @file
  * Queue functionality.
  * 
- * Copied from system.queue.inc
+ * Copied from system.queue.inc. 
+ * 
+ * Note:
+ * - Queries are rewritten
+ * - REQUEST_TIME does not exist in D6, however, some comments refer to it. 
  */
 
 /**
@@ -192,36 +196,30 @@ class SystemQueue implements DrupalQueueInterface {
   }
 
   public function numberOfItems() {
-    return db_query('SELECT COUNT(item_id) FROM {queue} WHERE name = :name', array(':name' => $this->name))->fetchField();
+    return db_result(db_query('SELECT COUNT(item_id) FROM {queue} WHERE name = "%s"', $this->name));
   }
 
   public function claimItem($lease_time = 30) {
     if (!isset($this->consumerId)) {
-      $this->consumerId = db_insert('queue_consumer_id')
-        ->useDefaults(array('consumer_id'))
-        ->execute();
+      $object = new stdClass();
+      drupal_write_record('queue_consumer_id', $object);
+      $this->consumerId = $object->consumer_id;
     }
     // Claim an item by updating its consumer_id and expire fields. If claim
     // is not successful another thread may have claimed the item in the
     // meantime. Therefore loop until an item is successfully claimed or we are
     // reasonably sure there are no unclaimed items left.
     while (TRUE) {
-      $item = db_query_range('SELECT data, item_id FROM {queue} q WHERE consumer_id = 0 AND name = :name ORDER BY created ASC', 0, 1, array(':name' => $this->name))->fetchObject();
+      $item = db_fetch_object(db_query_range('SELECT data, item_id FROM {queue} q WHERE consumer_id = 0 AND name = "%s" ORDER BY created ASC', $this->name, 0, 1));
       if ($item) {
         // Try to mark the item as ours. We cannot rely on REQUEST_TIME
         // because items might be claimed by a single consumer which runs
         // longer than 1 second. If we continue to use REQUEST_TIME instead of
         // the current time(), we steal time from the lease, and will tend to
         // reset items before the lease should really expire.
-        $update = db_update('queue')
-          ->fields(array(
-            'consumer_id' => $this->consumerId,
-            'expire' => time() + $lease_time,
-          ))
-          ->condition('item_id', $item->item_id)
-          ->condition('consumer_id', 0);
+        db_query('UPDATE {queue} SET consumer_id = %d, expire = %d WHERE item_id = %d AND consumer_id = 0', $this->consumerId, time() + $lease_time, $item->item_id);
         // If there are affected rows, this update succeeded.
-        if ($update->execute()) {
+        if (db_affected_rows()) { // @todo: this may not be thread safe.
           $item->data = unserialize($item->data);
           return $item;
         }
@@ -234,9 +232,7 @@ class SystemQueue implements DrupalQueueInterface {
   }
 
   public function deleteItem($item) {
-    db_delete('queue')
-      ->condition('item_id', $item->item_id)
-      ->execute();
+    db_query('DELETE FROM {queue} WHERE item_id = %d', $item->id);
   }
 
   public function createQueue() {
@@ -246,9 +242,7 @@ class SystemQueue implements DrupalQueueInterface {
   }
 
   public function deleteQueue() {
-    db_delete('queue')
-      ->condition('name', $this->name)
-      ->execute();
+    db_query('DELETE FROM {queue} WHERE name = "%s"', $this->name);
   }
 }
 
