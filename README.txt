@@ -2,7 +2,7 @@ $Id$
 
 DRUPAL QUEUE
 
-Backport of Drupal 7 Queue API by chx, dww, neclimdul et. al.
+Drupal 6 Backport of Drupal 7 Queue API by chx, dww, neclimdul et. al.
 
 Related Drupal 7 issues
 
