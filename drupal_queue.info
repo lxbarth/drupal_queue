@@ -1,0 +1,4 @@
+;$Id$
+name = Drupal Queue API
+description = Queue API for cron tasks.
+core = 6.x
